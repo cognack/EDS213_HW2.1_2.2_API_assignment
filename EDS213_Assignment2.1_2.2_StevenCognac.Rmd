@@ -1,0 +1,141 @@
+---
+title: "EDS 213 - Assignment 2.1 and 2.2"
+author: "Steven Cognac"
+date: "10/6/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dataRetrieval) 
+library(tidyverse)
+library(metajam)
+library(here)
+library(patchwork)
+library(gt)
+
+```
+
+USGS API sources
+ - https://cran.r-project.org/web/packages/dataRetrieval/vignettes/dataRetrieval.html#daily-data
+ - https://dashboard.waterdata.usgs.gov/app/nwd/?region=lower48&aoi=default
+ 
+Metajam sources
+ - https://brunj7.github.io/EDS-213-metadata/slides/metajam_intro.html#3
+ 
+
+# **Assignment 2.1 - dataRetrieval**
+
+
+## 2.1.1 Add the Santa Paula Creek guage to exercise we did in class
+## Retrieve USGS stream guage data at the Ventura River and Santa Paula Creek from 2019-10-01 to 2020-10-05
+```{r}
+
+siteNumber <- c(11118500, 11113500) # Ventura river and Santa Paula Creek USGS stations
+parameterCd <- c("00060") # discharge & gauge height
+startDate <- "2019-10-01" # use "" to grab entire data from beginning of recording
+endDate <- "2021-10-11"
+
+
+# create database based on above parameters
+discharge <- readNWISdv(siteNumber, parameterCd, startDate, endDate) %>% 
+  mutate(river = case_when(site_no == "11118500" ~ "ventura_river",
+                           site_no == "11113500" ~ "santa_paula_creek"))
+
+```
+
+## 2.1.2 What is the best way to query multiple sites using this R package?
+
+**Best way to query multiple sites is to put all site numbers in a vector using the concatenate c() function. **
+
+## 2.1.3 Create a plot showing any stream flow response to the rain of last night (10/04). Determine at what time did the stream flow peaked (if any) at the two locations?
+
+ - **Based on the data and graphs, the Ventura River had a slight peak on October 7.  However, the river has a wide floodplain and is dammed less than 1 mile upstream from the Lake Casitas dam. As such, the flow is heavily regulated and minor discharge deviations in the Ventura River are unlikely a result of the rainstorm.**
+ - **The Santa Paula Creek is a smaller creek that's not dammed and more likely  influenced by storm events.  Based on the data and graphs, Santa Paula Creek discharge peaked on October 8, 2021. **
+
+below the Santa Paula Creek discharge peaked October 8, four days after the storm event Can't fully answer question **
+
+```{r}
+# filter for stream guage dates after October 1, 2021
+storm_discharge <- discharge %>% 
+  filter(Date >"2021-10-01")
+
+
+# plot of all discharge data
+all_discharge_plot <- ggplot(data = discharge, aes(x = Date, y = X_00060_00003, color = river)) +
+  geom_line() +
+  labs(x = "Date",
+       y = "Discharge (cfs)",
+       title = "USGS Ventura River and Santa Paula Creek Stations",
+       subtitle = "All data",
+       color = "Legend")
+
+
+# plot of storm event stream discharge data after October 1, 2021
+storm_plot <- ggplot(data = storm_discharge, aes(x = Date, y = X_00060_00003, color = river)) +
+  geom_line() +
+  labs(x = "Date",
+       y = "Discharge (cfs)",
+       subtitle = "October 4, 2021 rain storm event",
+       color = "Legend") +
+  geom_vline(xintercept = as.numeric(as.Date("2021-10-04")), color = "red", lwd = 2)
+
+
+all_discharge_plot / storm_plot
+```
+
+# **Assignment 2.2 - metajam **
+
+## 2.2.1 Finish the exercise we started during the lab session to use metajam to download the Alaskan household languages data from DataONE.
+
+```{r}
+# downloading data
+data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A7fc6f6db-c5ea-426a-a743-1f2edafb43b8"
+
+
+# download csv files with metajam to folder titled "metajam" with the here() function 
+data_path <- download_d1_data(data_url, here("metajam"))
+```
+
+## read in .csv data with metajam
+```{r}
+
+# download the data based on the file path with metajam. 
+# creates a list of all data, which has pre-defined names
+data <- read_d1_files(data_path)
+
+# view metadata
+data$attribute_metadata
+
+```
+
+
+## Write a piece of code that will compute the percentage of Alaskan household speaking only English for the year 2009 through 2015
+```{r}
+# get the dataframe
+hh_data <- data$data
+hh_data
+
+# filter data for dates from 2009 to 2015. Group by year and region based on yearly means
+alaska_data <- hh_data %>% 
+  filter(Year %in% c("2009", "2010", "2011", "2012", "2013", "2014", "2015")) %>% 
+  dplyr::rename(Region = "SASAP.Region") %>% 
+  group_by(Year, Region) %>% 
+  summarise(percent = (mean(speak_only_english, na.rm = TRUE) / (mean(total, na.rm = TRUE))) * 100)
+alaska_data
+
+```
+# plot of Alaskan household speaking only English for the years 2009 through 2015
+
+```{r}
+
+alaska_standardized <- ggplot(data = alaska_data, aes(x = Year, y = percent)) +
+  geom_line(aes(color = Region)) +
+  labs(y = "Percent",
+       title = "English Speaking Households in Alaskan Regions")
+
+alaska_standardized
+
+```
+
