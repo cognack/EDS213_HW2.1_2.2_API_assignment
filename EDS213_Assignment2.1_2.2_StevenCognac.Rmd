@@ -29,17 +29,18 @@ Metajam sources
 
 
 ## 2.1.1 Add the Santa Paula Creek guage to exercise we did in class
-## Retrieve USGS stream guage data at the Ventura River and Santa Paula Creek from 2019-10-01 to 2020-10-05
+## Retrieve USGS stream guage data at the Ventura River and Santa Paula Creek from 2019-10-01 to 2020-10-10
 ```{r}
 
 siteNumber <- c(11118500, 11113500) # Ventura river and Santa Paula Creek USGS stations
 parameterCd <- c("00060") # discharge & gauge height
-startDate <- "2019-10-01" # use "" to grab entire data from beginning of recording
-endDate <- "2021-10-11"
+startDate <- "2021-10-04" # use "" to grab entire data from beginning of recording
+endDate <- "2021-10-04"
+tz = "America/Los_Angeles"
 
 
 # create database based on above parameters
-discharge <- readNWISdv(siteNumber, parameterCd, startDate, endDate) %>% 
+discharge <- readNWISuv(siteNumber, parameterCd, startDate, endDate, tz) %>% 
   mutate(river = case_when(site_no == "11118500" ~ "ventura_river",
                            site_no == "11113500" ~ "santa_paula_creek"))
 
@@ -57,39 +58,25 @@ discharge <- readNWISdv(siteNumber, parameterCd, startDate, endDate) %>%
 below the Santa Paula Creek discharge peaked October 8, four days after the storm event Can't fully answer question **
 
 ```{r}
-# filter for stream guage dates after October 1, 2021
-storm_discharge <- discharge %>% 
-  filter(Date >"2021-10-01")
-
-
-# plot of all discharge data
-all_discharge_plot <- ggplot(data = discharge, aes(x = Date, y = X_00060_00003, color = river)) +
-  geom_line() +
-  labs(x = "Date",
-       y = "Discharge (cfs)",
-       title = "USGS Ventura River and Santa Paula Creek Stations",
-       subtitle = "All data",
-       color = "Legend")
-
 
 # plot of storm event stream discharge data after October 1, 2021
-storm_plot <- ggplot(data = storm_discharge, aes(x = Date, y = X_00060_00003, color = river)) +
+storm_plot <- ggplot(data = discharge, aes(x = dateTime, y = X_00060_00000, color = river)) +
   geom_line() +
   labs(x = "Date",
        y = "Discharge (cfs)",
-       subtitle = "October 4, 2021 rain storm event",
+       title = "October 4, 2021 rain storm event",
        color = "Legend") +
   geom_vline(xintercept = as.numeric(as.Date("2021-10-04")), color = "red", lwd = 2)
 
 
-all_discharge_plot / storm_plot
+storm_plot
 ```
 
 # **Assignment 2.2 - metajam **
 
 ## 2.2.1 Finish the exercise we started during the lab session to use metajam to download the Alaskan household languages data from DataONE.
 
-```{r}
+```{r, error=TRUE}
 # downloading data
 data_url <- "https://knb.ecoinformatics.org/knb/d1/mn/v2/object/urn%3Auuid%3A7fc6f6db-c5ea-426a-a743-1f2edafb43b8"
 
@@ -121,7 +108,7 @@ hh_data
 alaska_data <- hh_data %>% 
   filter(Year %in% c("2009", "2010", "2011", "2012", "2013", "2014", "2015")) %>% 
   dplyr::rename(Region = "SASAP.Region") %>% 
-  group_by(Year, Region) %>% 
+  group_by(Year) %>% 
   summarise(percent = (mean(speak_only_english, na.rm = TRUE) / (mean(total, na.rm = TRUE))) * 100)
 alaska_data
 
@@ -131,9 +118,10 @@ alaska_data
 ```{r}
 
 alaska_standardized <- ggplot(data = alaska_data, aes(x = Year, y = percent)) +
-  geom_line(aes(color = Region)) +
+  geom_line() +
   labs(y = "Percent",
-       title = "English Speaking Households in Alaskan Regions")
+       title = "English Speaking Households in Alaskan Regions") +
+  scale_y_reverse()
 
 alaska_standardized
 
