@@ -120,7 +120,7 @@ alaska_data
 alaska_standardized <- ggplot(data = alaska_data, aes(x = Year, y = percent)) +
   geom_line() +
   labs(y = "Percent",
-       title = "English Speaking Households in Alaskan Regions") +
+       title = "Percentage of English Speaking Households in Alaska") +
   scale_y_reverse()
 
 alaska_standardized
